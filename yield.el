@@ -2,10 +2,10 @@
 ;;; lexical-binding: t; -*-
 
 ;; Author: Christian White <christiantwhite@protonmail.com>
-;; Keywords: extensions, tools, lisp
-;;
-;; This file is part of the `yield` generator library.
-;;
+;; Keywords: extensions, tools, lisp, generators, coroutines, async
+;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (dash "2.18") (pcase "1.2") (subr-x "0.0") (ht "0.0") (s "0.0"))
+;; Homepage: https://github.com/ctwhite/yield
+
 ;;; Commentary:
 ;;
 ;; This file serves as the primary entry point for the `yield` generator library.
