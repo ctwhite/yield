@@ -1,4 +1,3 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; yield-generator.el --- High-Level Generator API -*-
 ;;; lexical-binding: t; -*-
 

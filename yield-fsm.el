@@ -1,4 +1,3 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; yield-fsm.el --- Finite State Machine for Resumable Operations -*-
 ;;; lexical-binding: t; -*-
 

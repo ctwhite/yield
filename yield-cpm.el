@@ -1,4 +1,3 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; yield-cpm.el --- Continuation-Passing Machine for Generators -*-
 ;;; lexical-binding: t; -*-
 
