@@ -101,8 +101,8 @@ Returns:
                  ,@(-map (-lambda ((condition . handler-cont))
                            `(,condition
                              (setf ,val-sym ,err-obj-sym)
-                             '(:jump ,handler-cont . ,err-obj-sym))))
-                         (yield-cpm-context-error-handler-stack cpm-ctx)))))
+                             '(:jump ,handler-cont . ,err-obj-sym)))
+                         (yield-cpm-context-error-handler-stack cpm-ctx))))))
     (let ((step-thunk (yield-cpm-make-thunk final-body-code)))
       (push `(:name ,name :thunk ,step-thunk) (yield-cpm-context-fsm-steps cpm-ctx))
       name)))
@@ -155,8 +155,6 @@ Returns:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Transformation Helpers for Special Forms
 
-(declare-function yield-cpm-transform-expression (cpm-ctx form next-cont-name))
-
 (defun yield-cpm--transform-body-sequence (cpm-ctx body-forms next-cont-name)
   "Transforms a sequence of forms, chaining them in correct execution order.
 Each form's transformation is given the next form's entry point as its
@@ -194,7 +192,7 @@ Arguments:
 
 (defun yield-cpm-transform-yield (cpm-ctx form _next-cont-name)
   "Transforms a `yield--internal-throw-form` (from `yield!`).
-This creates a step that returns a yield command (e.g., `(:yield 42)`),
+This creates a step that returns a yield command (e.g., `\='(:yield 42)\=`),
 which then handles the actual suspension. When resumed, execution will
 continue at the next sequential step in the FSM's `steps` vector.
 The `_next-cont-name` argument is ignored as the FSM automatically
@@ -505,7 +503,8 @@ This function orchestrates the entire compilation process:
 Arguments:
   BODY: The Lisp code list representing the generator's body.
   INITIAL-ARG-BINDINGS: An alist of `(original-arg . original-arg)`.
-  FSM-OPTIONS-VAR: The symbol that will hold the &rest fsm-options at runtime.
+  FSM-OPTIONS-VAR: The symbol that will hold the &rest fsm-options
+                   at runtime.
 
 Returns:
   A single `let*` s-expression that constitutes the entire body

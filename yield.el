@@ -3,7 +3,7 @@
 
 ;; Author: Christian White <christiantwhite@protonmail.com>
 ;; Keywords: extensions, tools, lisp, generators, coroutines, async
-;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (dash "2.18") (pcase "1.2") (ht "0.0") (s "0.0"))
+;; Package-Requires: ((emacs "26.1") (cl-lib "0.5") (dash "2.18") (pcase "1.2") (ht "2.3") (s "1.12.0"))
 ;; Homepage: https://github.com/ctwhite/yield
 ;; Version: 1.0
 
