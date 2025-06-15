@@ -136,15 +136,16 @@ Arguments:
   CPM-CTX: The context containing all lifted symbols.
 
 Returns:
-  A list of binding forms for a `let` block, e.g., '((var1 nil) (var2 nil))."
+  A list of binding forms for a `let` block, e.g., `((var1 nil) (var2 nil))."
   (let* ((value-sym (yield-cpm-context-value-sym cpm-ctx))
          (final-sym (yield-cpm-context-final-sym cpm-ctx))
          (lifted-vars (yield-cpm-context-all-lifted-symbols cpm-ctx))
-         (lifted-bindings (-map (lambda (sym) `(,sym nil)) lifted-vars)))
+         (lifted-bindings (cl-loop for sym in lifted-vars collect `(,sym nil))))
     (append lifted-bindings `((,value-sym nil) (,final-sym nil)))))
 
 (defun yield-cpm-substitute-bindings (cpm-ctx form)
-  "Recursively substitute original var symbols in FORM with their lifted counterparts."
+  "Recursively substitute original var symbols in FORM with their lifted 
+  counterparts."
   (let ((bindings (yield-cpm-context-current-bindings cpm-ctx)))
     (pcase form
       ((pred symbolp) (or (cdr (assq form bindings)) form))
@@ -333,32 +334,51 @@ Returns:
   (pcase-let* ((`(,(or 'let 'let*) ,bindings . ,body) form))
     (let* ((original-bindings
             (-map (lambda (b) (if (symbolp b) `(,b nil) b)) bindings))
-           (new-cpm-bindings
-            (copy-alist (yield-cpm-context-current-bindings cpm-ctx)))
+           ;; Create a NEW context for the let's body, inheriting from the parent.
+           (sub-cpm-ctx (copy-yield-cpm-context cpm-ctx)) ; <--- NEW SUB-CONTEXT
            (final-body-entry-point nil))
-      ;; Create lifted symbols for all variables in the new scope.
+
+      ;; Step 1: Create lifted symbols for all variables in this new scope.
+      ;; Also, register them in `sub-cpm-ctx` as locally bound.
       (-each original-bindings
              (-lambda ((var _value))
                (let* ((lifted-var (yield-cpm-gensym (symbol-name var))))
-                 (push (cons var lifted-var) new-cpm-bindings)
-                 (push lifted-var (yield-cpm-context-all-lifted-symbols cpm-ctx)))))
-      ;; Transform the body within the new lexical context.
-      (let ((sub-cpm-ctx (copy-yield-cpm-context cpm-ctx)))
-        (setf (yield-cpm-context-current-bindings sub-cpm-ctx) new-cpm-bindings)
-        (setq final-body-entry-point
-              (yield-cpm-transform-expression cpm-ctx `(progn ,@body) next-cont-name)))
-      ;; Chain the binding initializations backwards.
+                 ;; Add to ALL lifted symbols list (for the final generator env)
+                 (push lifted-var (yield-cpm-context-all-lifted-symbols cpm-ctx)) ; Important: use parent cpm-ctx
+                 ;; Add to current bindings for this scope (maps original to lifted)
+                 (push (cons var lifted-var)
+                       (yield-cpm-context-current-bindings sub-cpm-ctx))))) ; Important: use sub-cpm-ctx
+
+      ;; Step 2: Transform the body within the new lexical context (`sub-cpm-ctx`).
+      ;; The `initial-arg-bindings` in the main transform handles arguments.
+      (setq final-body-entry-point
+            (yield-cpm-transform-expression sub-cpm-ctx `(progn ,@body) next-cont-name))
+      
+      ;; Step 3: Propagate any new lifted symbols from the sub-context back up.
+      ;; (The `all-lifted-symbols` within `sub-cpm-ctx` would only contain
+      ;;  symbols lifted from *further nested* scopes that are not local to this `let`.)
+      ;; Since we explicitly push to `cpm-ctx`'s `all-lifted-symbols` above,
+      ;; this might not be strictly necessary here, but it's good for robustness.
+      (setf (yield-cpm-context-all-lifted-symbols cpm-ctx)
+            (cl-union (yield-cpm-context-all-lifted-symbols cpm-ctx)
+                      (yield-cpm-context-all-lifted-symbols sub-cpm-ctx)
+                      :test #'eq))
+
+      ;; Step 4: Chain the binding initializations backwards.
       (let ((current-binding-cont final-body-entry-point))
         (dolist (binding-pair (reverse original-bindings))
           (let* ((var (car binding-pair))
                  (val-form (cl-second binding-pair))
-                 (lifted-var (yield-cpm-get-lifted-symbol cpm-ctx var)))
+                 ;; Get the (newly gensym'd) lifted symbol for this variable.
+                 (lifted-var (yield-cpm-get-lifted-symbol cpm-ctx var))) ; <--- this will return the gensym
             (setq current-binding-cont
                   (yield-cpm-transform-expression
                    cpm-ctx val-form
                    (yield-cpm-add-fsm-step
-                    cpm-ctx (yield-cpm-gensym "let-assign")
+                    cpm-ctx (yield-cpm-gensym (format "let-assign-%S" var))
                     `(progn
+                       ;; Assign the result of the value-form evaluation
+                       ;; (which is in `value-sym`) to the lifted variable.
                        (setf ,lifted-var
                              ,(yield-cpm-context-value-sym cpm-ctx))
                        '(,yield--jump-status-key ,current-binding-cont)))))))
@@ -379,7 +399,8 @@ Returns:
         (yield-cpm-transform-expression cpm-ctx value-form assign-step)))))
 
 (defun yield-cpm-transform-setq (cpm-ctx form next-cont-name)
-  "Transforms a `(setq VAR1 VAL1 ...)` form by converting it to a `progn` of `setf` forms."
+  "Transforms a `(setq VAR1 VAL1 ...)` form by converting it to a 
+  `progn` of `setf` forms."
   (let ((setq-args (cdr form))
         (progn-body '()))
     (when (/= 0 (% 2 (length setq-args)))
